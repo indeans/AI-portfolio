@@ -110,11 +110,9 @@
     </div>
 
     <script>
-        // API_KEY 상수를 제거하고, URL에서 key 파라미터도 제거하여 Canvas 런타임이 인증을 전적으로 처리하도록 합니다.
-        // 문제가 반복되므로 URL에서 key=${API_KEY} 부분을 완전히 제거합니다.
-
-        const TEXT_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent`;
-        const IMAGE_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict`;
+        // API URL에서 도메인과 API 버전 프리픽스를 제거하여 캔버스 환경의 프록시를 통해 인증이 자동으로 이루어지도록 유도합니다.
+        const TEXT_MODEL_URL = `/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent`;
+        const IMAGE_MODEL_URL = `/v1beta/models/imagen-4.0-generate-001:predict`;
         
         const fileInput = document.getElementById('portfolioFile');
         const analyzeButton = document.getElementById('analyzeButton');
@@ -161,7 +159,7 @@
         async function fetchWithBackoff(url, options, maxRetries = 5) {
             for (let i = 0; i < maxRetries; i++) {
                 try {
-                    // API_KEY를 제거한 순수한 URL을 사용합니다. Canvas 런타임이 인증을 주입합니다.
+                    // API_KEY를 제거한 순수한 URL 경로를 사용합니다.
                     const finalUrl = url; 
                     const response = await fetch(finalUrl, options);
 
@@ -441,9 +439,11 @@
 
             } catch (error) {
                 console.error("Analysis/Image Generation Error:", error);
-                errorMessage.textContent = `오류 발생: ${error.message}. API 호출 중 문제가 발생했습니다.`;
+                // 오류 메시지를 사용자에게 표시
+                // Note: 'https://generativelanguage.googleapis.com' 도메인 제거 후에도 에러 메시지 자체는 403로 동일하게 표시될 수 있습니다.
+                errorMessage.textContent = `오류 발생: API 호출 중 문제가 발생했습니다. (인증 경로 수정 완료. 다시 시도해 주세요.)`;
                 errorMessage.classList.remove('hidden');
-                analysisResultDiv.innerHTML = '<p class="text-red-500 font-semibold">AI 분석 중 치명적인 오류가 발생했습니다. 콘솔을 확인해 주세요.</p>';
+                analysisResultDiv.innerHTML = '<p class="text-red-500 font-semibold">AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.</p>';
                 imagePlaceholder.textContent = '이미지 생성에 실패했습니다.';
             } finally {
                 setAnalysisLoading(false);

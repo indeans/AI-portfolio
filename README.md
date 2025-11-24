@@ -110,7 +110,10 @@
     </div>
 
     <script>
-        const API_KEY = ""; // Gemini API Key (Empty string for Canvas runtime)
+        // API_KEY를 빈 문자열로 설정하여 Canvas 런타임이 자동으로 API 키를 제공하도록 합니다.
+        const API_KEY = ""; 
+        
+        // API URL에 API_KEY 파라미터를 추가하지 않고, Canvas 런타임이 인증을 처리하도록 합니다.
         const TEXT_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
         const IMAGE_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${API_KEY}`;
         
@@ -159,7 +162,10 @@
         async function fetchWithBackoff(url, options, maxRetries = 5) {
             for (let i = 0; i < maxRetries; i++) {
                 try {
-                    const response = await fetch(url, options);
+                    // API_KEY가 빈 문자열이면 Canvas 런타임이 자동으로 키를 주입합니다.
+                    const finalUrl = url; 
+                    const response = await fetch(finalUrl, options);
+
                     if (response.status === 429 && i < maxRetries - 1) {
                         const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
                         console.log(`Rate limit exceeded. Retrying in ${Math.round(delay / 1000)}s...`);
@@ -255,7 +261,7 @@
                 const userText = customPrompt.value.trim();
                 
                 // Define the system instruction to guide the AI persona and output format
-                // **새로운 전체 구조 분석 항목 추가됨**
+                // **전체 구조 분석 항목 포함**
                 const systemPrompt = `
                     당신은 세계적인 실내 건축 및 디자인 포트폴리오 리뷰 전문가입니다. 
                     업로드된 포트폴리오 커버 이미지(첫 페이지)를 분석하여 해당 커버가 암시하는 컨셉을 바탕으로 아래의 여섯 가지 항목에 대해 전문적인 한국어 가이드를 Markdown 형식으로 작성해 주세요.
@@ -305,7 +311,7 @@
                 const textResult = result.candidates?.[0]?.content?.parts?.[0]?.text || '분석 결과를 받아오지 못했습니다.';
                 lastAnalysisResult = textResult; // Save result for image generation
 
-                // --- 새로운 분석 결과 파싱 및 스타일링 로직 (새로운 항목 추가됨) ---
+                // --- 새로운 분석 결과 파싱 및 스타일링 로직 ---
                 const sections = {
                     '문제점': { title: '문제점 (Problems)', color: 'border-red-500 bg-red-50', icon: '<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.398 16c-.77 1.333.192 3 1.732 3z"/></svg>'},
                     '개선 가이드': { title: '개선 가이드 (Improvement)', color: 'border-green-500 bg-green-50', icon: '<svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'},

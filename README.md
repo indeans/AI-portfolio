@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Inter 폰트 적용 */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=100..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f7f7f9;
@@ -110,12 +110,11 @@
     </div>
 
     <script>
-        // API_KEY를 빈 문자열로 설정하여 Canvas 런타임이 자동으로 API 키를 제공하도록 합니다.
-        const API_KEY = ""; 
-        
-        // API URL에 API_KEY 파라미터를 추가하지 않고, Canvas 런타임이 인증을 처리하도록 합니다.
-        const TEXT_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
-        const IMAGE_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${API_KEY}`;
+        // API_KEY 상수를 제거하고, URL에서 key 파라미터도 제거하여 Canvas 런타임이 인증을 전적으로 처리하도록 합니다.
+        // 문제가 반복되므로 URL에서 key=${API_KEY} 부분을 완전히 제거합니다.
+
+        const TEXT_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent`;
+        const IMAGE_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict`;
         
         const fileInput = document.getElementById('portfolioFile');
         const analyzeButton = document.getElementById('analyzeButton');
@@ -162,7 +161,7 @@
         async function fetchWithBackoff(url, options, maxRetries = 5) {
             for (let i = 0; i < maxRetries; i++) {
                 try {
-                    // API_KEY가 빈 문자열이면 Canvas 런타임이 자동으로 키를 주입합니다.
+                    // API_KEY를 제거한 순수한 URL을 사용합니다. Canvas 런타임이 인증을 주입합니다.
                     const finalUrl = url; 
                     const response = await fetch(finalUrl, options);
 

@@ -44,9 +44,9 @@
             <!-- 1. Upload Section -->
             <section class="lg:col-span-1 card p-6 h-full">
                 <h2 class="text-2xl font-semibold mb-4 text-gray-700">1. 포트폴리오 커버 업로드</h2>
-                <div class="bg-gray-50 p-4 rounded-lg mb-4 text-sm text-gray-600 border border-gray-200">
-                    <p class="font-bold mb-1">💡 중요 안내: 시뮬레이션 모드</p>
-                    <p>현재 환경 제약으로 인해 AI 분석 기능이 시뮬레이션으로 작동합니다. 이미지를 업로드하고 '분석 시작' 버튼을 누르면, 전문가 수준의 가이드가 즉시 생성됩니다.</p>
+                <div class="bg-red-50 p-4 rounded-lg mb-4 text-sm text-red-700 border border-red-200">
+                    <p class="font-bold mb-1">🚨 중요 안내: 실제 AI 모드</p>
+                    <p>현재 AI 모델을 직접 호출하도록 복구했습니다. 만약 **'403' 인증 오류**가 발생하면 이는 환경 문제이므로, 개발자에게 문의해주세요.</p>
                 </div>
                 
                 <label for="file-upload" class="custom-file-input flex flex-col items-center justify-center p-6 mb-4 text-gray-500 hover:text-gray-700 h-40">
@@ -60,7 +60,7 @@
                 </button>
                 <div id="loading-indicator" class="mt-4 text-center text-blue-600 hidden">
                     <svg class="animate-spin h-5 w-5 mr-3 inline-block" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    분석 중... (시뮬레이션)
+                    AI 분석 중... (최대 30초 소요)
                 </div>
             </section>
 
@@ -70,6 +70,9 @@
                 <div id="results-container" class="space-y-6">
                     <div id="initial-message" class="text-center text-gray-500 p-8 border border-gray-200 rounded-xl bg-gray-50">
                         여기에 포트폴리오 분석 결과가 나타납니다. 커버 이미지를 업로드하고 분석을 시작해 주세요.
+                    </div>
+                    <div id="error-message" class="text-center text-red-600 p-4 border border-red-300 bg-red-100 rounded-xl hidden">
+                        API 오류: 분석에 실패했습니다. (자세한 내용은 콘솔 확인)
                     </div>
 
                     <!-- AI Generated Content -->
@@ -111,6 +114,7 @@
             const loadingIndicator = document.getElementById('loading-indicator');
             const uploadedImagePreview = document.getElementById('uploaded-image-preview');
             const initialMessage = document.getElementById('initial-message');
+            const errorMessage = document.getElementById('error-message');
             const aiAnalysisOutput = document.getElementById('ai-analysis-output');
             const problemOutput = document.getElementById('problem-output');
             const guideOutput = document.getElementById('guide-output');
@@ -119,6 +123,9 @@
             const generatedImage = document.getElementById('generated-image');
 
             let uploadedBase64Image = '';
+
+            const TEXT_MODEL_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+            const IMAGE_MODEL_URL = 'https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict';
 
             // 1. 파일 업로드 및 프리뷰
             fileUpload.addEventListener('change', (event) => {
@@ -145,17 +152,17 @@
                 // List (<ul>)
                 let html = markdown.replace(/^(-|\*|\d+\.)\s+(.*)$/gm, (match, p1, p2) => `<li>${p2.trim()}</li>`);
                 html = `<ul>${html}</ul>`;
-                html = html.replace(/<\/ul>\s*<ul>/g, ''); // Fix for multiple lists
+                html = html.replace(/<\/ul>\s*<ul>/g, ''); 
                 
                 // Bold (<strong>)
                 html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                 
-                // Headings (<h3>) - simple, line break based
+                // Headings (<h3>)
                 html = html.replace(/^### (.*)$/gm, '<h3>$1</h3>');
                 
                 // Paragraphs and remaining text
                 html = html.split('\n').map(line => {
-                    if (line.trim() === '' || line.startsWith('<ul>') || line.startsWith('<li')) {
+                    if (line.trim() === '' || line.startsWith('<ul>') || line.startsWith('<li') || line.startsWith('<h3')) {
                         return line;
                     }
                     return `<p>${line.trim()}</p>`;
@@ -164,68 +171,166 @@
                 return html;
             }
 
-            // 3. 시뮬레이션 데이터 생성 (AI 역할을 대체)
-            function generateSimulatedAnalysis() {
-                const simulatedMarkdown = `
-### 문제점 (Critical Issues)
-- **과도한 텍스트 사용**: 표지에 컨셉 설명이 너무 많아 시선이 분산됩니다. 핵심 키워드 3가지 이내로 축약해야 합니다.
-- **색상 팔레트 불일치**: 배경의 차가운 파란색과 프로젝트 이미지의 따뜻한 조명이 충돌합니다. 메인 컨셉에 맞는 색상 통일이 필요합니다.
-- **수직적 레이아웃의 부재**: 제목, 이름, 이미지가 중앙에 무질서하게 배치되어 시각적 안정감이 부족합니다.
-- **전체 페이지 구성**: 프로젝트 5개를 넣었는데, 각 프로젝트당 페이지 수가 불균형하여 포트폴리오의 볼륨감이 일정하지 않습니다.
+            // 3. 지수 백오프를 사용한 Fetch 함수
+            async function fetchWithBackoff(url, options, retries = 3) {
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const response = await fetch(url, options);
+                        if (response.ok) {
+                            return response;
+                        }
 
-### 개선 가이드 (Improvement Guide)
-- **컨셉 비주얼 강화**: 텍스트 대신 컨셉을 대표하는 강력한 하나의 이미지나 다이어그램을 전면에 배치하세요.
-- **그리드 시스템 도입**: 3x3 또는 4x4 그리드를 도입하여 이미지와 텍스트를 규칙적으로 배치하고 여백을 확보해야 합니다.
-- **프로젝트 스토리 보강**: 각 프로젝트마다 '문제 정의 - 솔루션 제안 - 결과'의 3단 구성을 명확히 하여 스토리텔링의 깊이를 더하세요.
-- **폰트 위계 확립**: 제목, 부제, 본문의 폰트 크기(위계)를 명확히 하여 정보 전달력을 높여야 합니다.
-
-### 표지 레이아웃 제안
-- **좌측 정렬(Left-Aligned)** 구성으로 제목의 가시성을 극대화합니다.
-- 제목 폰트는 'Noto Sans Bold'를 사용하여 가독성과 현대적인 느낌을 살립니다.
-- 배경은 미니멀한 **'웜 그레이(#F5F5F5)'** 단색으로 처리하고, 이미지 영역을 1/3로 제한합니다.
-
-### 색감 조합 제안
-- **메인 컬러**: 톤다운된 코발트 블루 (#004C99)
-- **보조 컬러**: 웜 톤의 크림색 (#FFFDD0)
-- **강조 컬러**: 톤앤톤의 연한 그레이 (#CCCCCC)
-- **조합 의도**: 전문성과 신뢰도를 나타내는 블루와, 건축 재료의 따뜻함을 나타내는 크림색의 조화로 균형을 잡습니다.
-                `;
-
-                // Markdown을 HTML 구조로 파싱 및 출력
-                problemOutput.innerHTML = `<span class="section-icon">❌</span> <span class="result-title">문제점 및 컨셉 분석</span>` + parseMarkdown(simulatedMarkdown.split('### 문제점 (Critical Issues)')[1].split('### 개선 가이드 (Improvement Guide)')[0]);
-                guideOutput.innerHTML = `<span class="section-icon">✅</span> <span class="result-title">개선 가이드 및 스토리텔링</span>` + parseMarkdown(simulatedMarkdown.split('### 개선 가이드 (Improvement Guide)')[1].split('### 표지 레이아웃 제안')[0]);
-                layoutOutput.innerHTML = `<span class="section-icon">📐</span> <span class="result-title">표지 레이아웃 제안</span>` + parseMarkdown(simulatedMarkdown.split('### 표지 레이아웃 제안')[1].split('### 색감 조합 제안')[0]);
-                colorOutput.innerHTML = `<span class="section-icon">🎨</span> <span class="result-title">색감 조합 제안</span>` + parseMarkdown(simulatedMarkdown.split('### 색감 조합 제안')[1]);
-
-                // 시뮬레이션 이미지 생성 (제안된 색상 및 레이아웃 반영)
-                const layoutText = '좌측 정렬(Left-Aligned) 구성, 웜 그레이 배경, 코발트 블루 하이라이트, 미니멀 건축 포트폴리오 표지 디자인';
-                const simulatedImageUrl = `https://placehold.co/400x550/004C99/FFFDD0?text=${encodeURIComponent('AI 제안: ' + layoutText)}`;
-                generatedImage.src = simulatedImageUrl;
+                        // 403 오류 처리 (권한 문제)
+                        if (response.status === 403) {
+                            const errorText = await response.text();
+                            console.error("API Error: 403 - Permission Denied.", errorText);
+                            throw new Error(`API 오류: 403 - ${errorText}. API 호출 중 문제가 발생했습니다.`);
+                        }
+                        
+                        // 4xx, 5xx 에러는 재시도 (429 Too Many Requests 대비)
+                        const errorBody = await response.text();
+                        console.warn(`Attempt ${i + 1} failed with status ${response.status}. Retrying...`, errorBody);
+                        
+                    } catch (error) {
+                        if (i === retries - 1) {
+                            console.error("Final API call failed after retries:", error);
+                            throw new Error(`API 호출 중 문제가 발생했습니다. (${error.message})`);
+                        }
+                    }
+                    // 지수 백오프 지연 (1s, 2s, 4s...)
+                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+                }
+                throw new Error("API 호출이 최대 재시도 횟수를 초과했습니다.");
             }
 
-            // 4. 분석 시작 버튼 클릭 핸들러
-            analyzeButton.addEventListener('click', () => {
+
+            // 4. AI 텍스트 분석 (Gemini)
+            async function analyzePortfolio(base64Image) {
+                const systemPrompt = "당신은 건축 및 실내건축 포트폴리오의 품질을 평가하는 세계적인 전문가입니다. 업로드된 이미지를 포트폴리오 표지로 간주하고, 전문적인 시각으로 구조(Story), 레이아웃, 색감의 문제점을 진단하고 구체적인 개선 가이드를 한국어로 Markdown 형식에 맞춰 제공하세요. 특히, 전체 포트폴리오 구조 및 스토리텔링 방향을 제시해야 합니다.";
+                
+                const userQuery = "이 이미지를 실내건축 포트폴리오 표지로 보고, 디자인 구조 및 스토리, 색감 문제를 진단하고 개선 가이드를 Markdown 섹션으로 나누어 제공하세요. 응답은 오직 Markdown 내용으로만 구성해야 합니다. 섹션은 반드시 '### 문제점 (Critical Issues)', '### 개선 가이드 (Improvement Guide)', '### 표지 레이아웃 제안', '### 색감 조합 제안' 네 가지로 구성되어야 합니다.";
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: userQuery },
+                            {
+                                inlineData: {
+                                    mimeType: "image/jpeg", // Assume jpeg/png is safe
+                                    data: base64Image
+                                }
+                            }
+                        ]
+                    }],
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                };
+
+                const response = await fetchWithBackoff(TEXT_MODEL_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                
+                if (!text) {
+                    console.error("Gemini analysis failed or returned empty response:", result);
+                    throw new Error("AI 텍스트 분석 결과가 비어있습니다.");
+                }
+
+                return text;
+            }
+
+            // 5. AI 이미지 생성 (Imagen)
+            async function generateSampleImage(layoutPrompt) {
+                const prompt = `실내 건축 포트폴리오 표지 디자인, 제안된 레이아웃 및 색상 컨셉: "${layoutPrompt}". A4 비율, 미니멀하고 전문적인 스타일.`;
+                
+                const payload = { 
+                    instances: [{ prompt: prompt }], 
+                    parameters: { "sampleCount": 1 } 
+                };
+
+                const response = await fetchWithBackoff(IMAGE_MODEL_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                const base64Data = result.predictions?.[0]?.bytesBase64Encoded;
+                if (!base64Data) {
+                    console.error("Imagen generation failed or returned empty response:", result);
+                    throw new Error("AI 샘플 이미지 생성에 실패했습니다.");
+                }
+                
+                return `data:image/png;base64,${base64Data}`;
+            }
+
+            // 6. 분석 결과 UI 업데이트
+            function updateUIWithAnalysis(markdownText) {
+                // 마크다운에서 각 섹션 추출
+                const sections = {
+                    problem: (markdownText.match(/### 문제점 \([\s\S]*?(?=### 개선 가이드)/) || [''])[0].trim(),
+                    guide: (markdownText.match(/### 개선 가이드 \([\s\S]*?(?=### 표지 레이아웃)/) || [''])[0].trim(),
+                    layout: (markdownText.match(/### 표지 레이아웃 제안[\s\S]*?(?=### 색감 조합)/) || [''])[0].trim(),
+                    color: (markdownText.match(/### 색감 조합 제안[\s\S]*/)?.[0] || '').trim()
+                };
+
+                problemOutput.innerHTML = `<span class="section-icon">❌</span> <span class="result-title">문제점 및 컨셉 분석</span>` + parseMarkdown(sections.problem);
+                guideOutput.innerHTML = `<span class="section-icon">✅</span> <span class="result-title">개선 가이드 및 스토리텔링</span>` + parseMarkdown(sections.guide);
+                layoutOutput.innerHTML = `<span class="section-icon">📐</span> <span class="result-title">표지 레이아웃 제안</span>` + parseMarkdown(sections.layout);
+                colorOutput.innerHTML = `<span class="section-icon">🎨</span> <span class="result-title">색감 조합 제안</span>` + parseMarkdown(sections.color);
+                
+                // 이미지 생성에 필요한 레이아웃 제안 텍스트 추출 (첫 번째 문단만 사용)
+                const layoutPrompt = (sections.layout.match(/제안\n\s*-\s*(.*)/i) || sections.layout.match(/제안\s*\n*\s*(.*)/i) || [null, '전문적인 포트폴리오 표지 디자인'])[1].trim();
+                
+                return layoutPrompt;
+            }
+
+            // 7. 분석 시작 버튼 클릭 핸들러
+            analyzeButton.addEventListener('click', async () => {
                 if (!uploadedBase64Image) {
                     alert('이미지를 먼저 업로드해 주세요.');
                     return;
                 }
-
-                // UI 상태 변경: 로딩 시작
+                
+                // UI 상태 변경: 로딩 시작 및 초기화
                 analyzeButton.disabled = true;
                 loadingIndicator.classList.remove('hidden');
                 initialMessage.classList.add('hidden');
-                aiAnalysisOutput.classList.add('hidden'); 
+                aiAnalysisOutput.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+                generatedImage.src = 'https://placehold.co/400x550/1d4ed8/ffffff?text=Generating...'; // 이미지 로딩 표시
 
-                // --- 시뮬레이션 실행 ---
-                // 실제 API 호출 대신 2초 지연 후 시뮬레이션 결과 출력
-                setTimeout(() => {
-                    generateSimulatedAnalysis();
+                try {
+                    // 1단계: 텍스트 분석 (Gemini)
+                    const markdownResult = await analyzePortfolio(uploadedBase64Image);
                     
-                    // UI 상태 변경: 로딩 끝, 결과 표시
+                    // 2단계: UI 업데이트 및 이미지 생성 프롬프트 추출
+                    const layoutPrompt = updateUIWithAnalysis(markdownResult);
+                    
+                    // 3단계: 이미지 생성 (Imagen)
+                    const imageUrl = await generateSampleImage(layoutPrompt);
+                    generatedImage.src = imageUrl;
+
+                    // 성공 시 UI 표시
+                    aiAnalysisOutput.classList.remove('hidden');
+
+                } catch (error) {
+                    console.error("Critical Analysis Error:", error);
+                    errorMessage.textContent = `API 오류: 분석에 실패했습니다. (${error.message})`;
+                    errorMessage.classList.remove('hidden');
+                    // 오류 시 이미지 초기화
+                    generatedImage.src = 'https://placehold.co/400x550/e0e0e0/505050?text=Generation+Failed';
+                } finally {
+                    // UI 상태 변경: 로딩 끝
                     loadingIndicator.classList.add('hidden');
                     analyzeButton.disabled = false;
-                    aiAnalysisOutput.classList.remove('hidden');
-                }, 2000); // 2초 대기
+                }
             });
         });
     </script>
